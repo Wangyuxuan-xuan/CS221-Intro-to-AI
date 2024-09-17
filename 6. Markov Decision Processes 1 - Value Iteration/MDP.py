@@ -2,6 +2,7 @@ from enum import Enum
 import os
 import sys
 from queue import PriorityQueue
+from typing import Dict
 
 sys.setrecursionlimit(100000)
 
@@ -75,14 +76,20 @@ class TransportationProblemMDP(object):
 # Inference (Algorithms)
 def valueIteration(mdp : TransportationProblemMDP):
     # Initialize
-    valueDic = {} # state => Vopt[state]
+    valueOptDic: Dict[str, float] = {}  # state => Vopt[state]
     # Initialize all optimal value with 0
     for state in mdp.states():
-        valueDic[state] = 0.
+        valueOptDic[state] = 0.
     
     def VQ(state, action):
+        """Q value of chance node Q,
+        If you take action a from state s.
+
+        Returns:
+            number: _description_
+        """
         return sum(
-            transProb * (reward + mdp.discountFactor() * valueDic[newState])
+            transProb * (reward + mdp.discountFactor() * valueOptDic[newState])
             for newState, transProb, reward in mdp.succProbAndReward(state, action)
         )
 
@@ -108,31 +115,42 @@ def valueIteration(mdp : TransportationProblemMDP):
             )
 
         # Check for convergence
-        if (isConverged(valueDic, newValueDic)):
+        if (isConverged(valueOptDic, newValueDic)):
             break
 
-        valueDic = newValueDic
+        valueOptDic = newValueDic
 
         # Read out policy:
         pi = {}
         for state in mdp.states():
             if mdp.isEnd(state):
-                pi[state] = "none"
+                for action in mdp.actions(state):
+                    pi[(state, action)] = "none"
             else:
                 # Otherwise it's gonna be the argmax of Q values
                 # Which is the input that can maximize Q values
                 # And how we gonna find the argmax?
                 #  - We just gonna try out different actions and see
-                pi[state] = max(
-                    (VQ(state, action), action) for action in mdp.actions(state)
-                )[1]
+
+                for action in mdp.actions(state):
+                    pi[(state, action)] = VQ(state, action)
+
+                # pi[state] = max(
+                #     (VQ(state, action), action) for action in mdp.actions(state)
+                # )[1]
 
         # Print stuff out
-        os.system('clear')
-        print('{:25} {:25} {:25}'.format('state', 'valueDic[state]', 'pi[state])'))
+
+        # print('{:25} {:25} {:25}'.format('state', 'valueOptDic[state]', 'pi[state])'))
+
+        # for state in mdp.states():
+        #     print('{:25} {:25} {:25}'.format(state, valueOptDic[state], pi[state]))
+
+        print('{:25} {:25} {:25} {:25}'.format('state', 'action', 'valueOptDic[state]', 'pi[(state, action)])'))
 
         for state in mdp.states():
-            print('{:5} {:15} {:55}'.format(state, valueDic[state], pi[state]))
+            for action in mdp.actions(state):
+                print('{:25} {:25} {:25} {:25}'.format(state, action, valueOptDic[state], pi[(state, action)]))
         input()
 
 
